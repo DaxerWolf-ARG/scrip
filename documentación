@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrip SOC800</title>
+<style>
+    * {
+        box-sizing: border-box;
+    }
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #1c1c1c;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        color: #f0e68c;
+    }
+    .container {
+        background-color: #2e2b2b;
+        box-shadow: 0px 4px 15px rgba(255, 136, 0, 0.5);
+        border-radius: 8px;
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+        text-align: center;
+        display: none;
+    }
+    .container.active {
+        display: block;
+    }
+    h3 {
+        font-size: 1.2em;
+        color: #f0e68c;
+        margin: 10px 0;
+        text-shadow: 1px 1px 4px #000;
+    }
+    .input-field, .button-group button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 6px;
+        outline: none;
+        font-size: 1em;
+        transition: all 0.3s ease;
+    }
+    .input-field {
+        border: 1px solid #555;
+        background-color: #1c1c1c;
+        color: #f0e68c;
+    }
+    .input-field:focus {
+        border-color: #ff8c00;
+        background-color: #333333;
+        box-shadow: 0px 0px 5px rgba(255, 140, 0, 0.7);
+    }
+    .button-group {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+    .button-group button {
+        background-color: #ff8c00;
+        color: #1c1c1c;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+        box-shadow: 0px 4px 8px rgba(255, 136, 0, 0.4);
+    }
+    .button-group button:hover {
+        background-color: #ffa726;
+    }
+    #previewText {
+        background-color: #1c1c1c;
+        padding: 15px;
+        border: 1px solid #555;
+        border-radius: 6px;
+        color: #f0e68c;
+        font-size: 0.9em;
+        text-align: left;
+        white-space: pre-wrap;
+    }
+</style>
+</head>
+<body>
+
+<div id="personaContainer" class="container active">
+    <h3>Persona con la que tuvimos contacto:</h3>
+    <input type="text" id="persona" oninput="capitalizeFirstLetter()" placeholder="Nombre de la persona que nos contacta" class="input-field"> 
+    <div class="button-group">
+        <button onclick="nextSection('osContainer')">Continuar</button>
+    </div>
+</div>
+
+<div id="osContainer" class="container">
+    <h3>OS:</h3>
+    <input type="number" id="os" placeholder="Solo Números" class="input-field">
+    <div class="button-group">
+        <button onclick="copyOS()">Copiar OS</button>
+        <button onclick="nextSection('areaContainer')">Continuar</button>
+    </div>
+</div>
+
+<div id="areaContainer" class="container">
+    <h3>Área de contacto:</h3>
+    <div class="button-group">
+        <button onclick="selectArea('SOC800')">SOC800</button>
+        <button onclick="selectArea('Alertas')">Alertas</button>
+        <button onclick="selectArea('Imposibilidad Tecnica')">Imposibilidad Tecnica</button>
+    </div>
+</div>
+
+<div id="motivoContainer" class="container">
+    <h3>Motivo de contacto:</h3>
+    <div id="motivoButtons" class="button-group"></div>
+</div>
+
+
+<div id="resolucionContainer" class="container">
+    <h3>Resolución del contacto:</h3>
+    <textarea id="resolucion" class="input-field" rows="4" placeholder="Descripción de lo sucedido con el Cliente (interno | Externo) + Qué se ejecutó + Conclusión de la interacción"></textarea>
+    <div class="button-group">
+        <button onclick="showPreview()">Mostrar Scrip</button>
+    </div>
+</div>
+
+<div id="previewContainer" class="container">
+    <h3>Previsualización del Contacto:</h3>
+    <div id="previewText" style="user-select: none;"></div>
+    <div class="button-group">
+            	<button onclick="copyPreview()">Copiar Scrip</button>
+		<button onclick="resetForm()">Reiniciar</button>
+    </div>
+</div>
+
+<script>
+    let areaContactOptions = {
+        "SOC800": ["Asignación Manual de OS u OT", "Detención de OS por Escalación a PE", "Activación de Instalación por Fallas en la Aplicación.", "Cierre manual por Fallas en la Aplicación", "Cancelación de una OS Duplicada", "Cancelación de OS Domicilio moroso", "Cancelación de OS El Plan de Servicio no Fue lo que Contrató", "No Atiende por Falta de Material", "Corrección de Coordenadas", "Clúster/Distrito Incorrecto", "Activar Adicional", "Asesoría", "Documentar Folio", "Desasignar Orden"],
+        "Alertas": ["Cliente no Responde", "Cliente Reagenda", "Cliente Solicita Retrasar Visita", "Cliente no se Encuentra en Domicilio", "Cliente no Desea Servicio", "Problemas de Acceso/Horarios", "ESAD no Manda Alerta", "Alerta Erronea","Mal Clima", "Policia no Deja Trabajar"],
+        "Imposibilidad Tecnica": ["Sin posteria/Canalización", "Fuera de Cobertura", "Predio Irregular", "Zona Blue Hole", "Zona Bajo Factibilidad", "Metraje Excedente", "Se Finaliza por Falta de Interacción"]
+    };
+    let formData = {
+        persona: '',
+        motivo: '',
+        os: '',
+        resolucion: ''
+    };
+
+    function capitalizeFirstLetter() {
+        let input = document.getElementById("persona");
+        input.value = input.value.replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function nextSection(sectionId) {
+        document.querySelector('.container.active').classList.remove('active');
+        document.getElementById(sectionId).classList.add('active');
+    }
+	function copyOS() {
+        let osInput = document.getElementById("os");
+        let osValue = "OS-" + osInput.value;
+        navigator.clipboard.writeText(osValue);
+    }
+    function selectArea(area) {
+        let motivoButtons = document.getElementById("motivoButtons");
+        motivoButtons.innerHTML = '';
+        areaContactOptions[area].forEach(motivo => {
+            let button = document.createElement("button");
+            button.textContent = motivo;
+            button.className = 'button';
+            button.onclick = () => selectMotivo(motivo);
+            motivoButtons.appendChild(button);
+        });
+        nextSection('motivoContainer');
+    }
+
+    function selectMotivo(motivo) {
+        formData.motivo = motivo;
+        nextSection('resolucionContainer');
+    }
+
+    
+
+    function showPreview() {
+        formData.persona = document.getElementById("persona").value;
+        formData.os = document.getElementById("os").value;
+        formData.resolucion = document.getElementById("resolucion").value;
+
+        let previewText = `
+Persona con la que tuvimos contacto: ${formData.persona}
+Motivo de contacto: ${formData.motivo}
+OS: OS-${formData.os}
+Resolución del contacto: ${formData.resolucion}
+        `;
+        document.getElementById("previewText").textContent = previewText;
+        nextSection('previewContainer');
+    }
+
+    function resetForm() {
+        formData = { persona: '', motivo: '', os: '', resolucion: '' };
+        document.querySelectorAll('.input-field').forEach(input => input.value = '');
+        nextSection('personaContainer');
+    }
+
+    function copyPreview() {
+        let previewText = `Persona con la que tuvimos contacto: ${formData.persona}\nMotivo de contacto: ${formData.motivo}\nOS: OS-${formData.os}\nResolución del contacto: ${formData.resolucion}`;
+        navigator.clipboard.writeText(previewText);
+    }
+</script>
+</body>
+</html>
+
